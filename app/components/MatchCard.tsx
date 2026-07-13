@@ -13,27 +13,55 @@ interface MatchCardProps {
   onComplete: (winner: TeamCode) => void;
 }
 
-type Phase = "idle" | "rolling" | "extra" | "penalties" | "done";
+// FIFA World Cup knockout rule: no draws are possible. 90' -> two 15' extra-time
+// halves -> penalty shootout. Every match here always resolves to a winner.
+type Phase = "idle" | "rolling" | "extra1" | "extra2" | "shootout" | "done";
 
 // Weighted pool capped at 3 goals, the realistic ceiling for a normal-time scoreline.
 const SCORE_POOL = [0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3];
 const randomScore = () => SCORE_POOL[Math.floor(Math.random() * SCORE_POOL.length)];
 const randomFlicker = () => Math.floor(Math.random() * 4);
 
-// Extra time rarely produces more than one goal per side.
-const EXTRA_TIME_POOL = [0, 0, 0, 0, 0, 0, 1, 1, 1, 2];
-const randomExtraTimeGoals = () => EXTRA_TIME_POOL[Math.floor(Math.random() * EXTRA_TIME_POOL.length)];
+// Each extra-time half rarely produces more than one goal per side.
+const EXTRA_HALF_POOL = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1];
+const randomExtraHalfGoals = () => EXTRA_HALF_POOL[Math.floor(Math.random() * EXTRA_HALF_POOL.length)];
 
 // Roll delays that start fast and stretch out, like a slot machine settling.
 const TICK_DELAYS = [70, 70, 80, 90, 100, 120, 140, 170, 210, 260, 320, 400];
+
+const PEN_CONVERSION_RATE = 0.78;
+const KICK_REVEAL_DELAY = 550;
+
+interface Shootout {
+  kicksA: boolean[];
+  kicksB: boolean[];
+}
+
+// Builds a full, already-decided shootout: 5 kicks each, then sudden death
+// pairs until the tie is broken. Revealed progressively during the animation.
+function simulateShootout(): Shootout {
+  const scoreOf = (kicks: boolean[]) => kicks.filter(Boolean).length;
+  const kicksA: boolean[] = [];
+  const kicksB: boolean[] = [];
+
+  for (let i = 0; i < 5; i++) {
+    kicksA.push(Math.random() < PEN_CONVERSION_RATE);
+    kicksB.push(Math.random() < PEN_CONVERSION_RATE);
+  }
+  while (scoreOf(kicksA) === scoreOf(kicksB)) {
+    kicksA.push(Math.random() < PEN_CONVERSION_RATE);
+    kicksB.push(Math.random() < PEN_CONVERSION_RATE);
+  }
+  return { kicksA, kicksB };
+}
 
 export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCardProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [scoreA, setScoreA] = useState<number | null>(null);
   const [scoreB, setScoreB] = useState<number | null>(null);
   const [wentToExtra, setWentToExtra] = useState(false);
-  const [penA, setPenA] = useState<number | null>(null);
-  const [penB, setPenB] = useState<number | null>(null);
+  const [shootout, setShootout] = useState<Shootout | null>(null);
+  const [revealedKicks, setRevealedKicks] = useState(0);
   const [winner, setWinner] = useState<TeamCode | null>(null);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -49,49 +77,56 @@ export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCard
     return id;
   };
 
-  // FIFA World Cup knockout rule: draw after 90' -> 30' extra time -> penalty shootout.
-  const resolveExtraTime = (baseA: number, baseB: number) => {
-    setPhase("extra");
-    setWentToExtra(true);
-    schedule(() => {
-      const etA = baseA + randomExtraTimeGoals();
-      const etB = baseB + randomExtraTimeGoals();
-      setScoreA(etA);
-      setScoreB(etB);
-
-      if (etA !== etB) {
-        const win = etA > etB ? teamA : teamB;
-        setWinner(win);
-        setPhase("done");
-        schedule(() => onComplete(win), 900);
-      } else {
-        resolvePenalties();
-      }
-    }, 900);
+  const finish = (win: TeamCode, delay: number) => {
+    setWinner(win);
+    setPhase("done");
+    schedule(() => onComplete(win), delay);
   };
 
-  const resolvePenalties = () => {
-    setPhase("penalties");
+  const startShootout = () => {
+    const result = simulateShootout();
+    setShootout(result);
+    setRevealedKicks(0);
+    setPhase("shootout");
+
+    const totalKicks = result.kicksA.length + result.kicksB.length;
+    for (let i = 1; i <= totalKicks; i++) {
+      schedule(() => setRevealedKicks(i), i * KICK_REVEAL_DELAY);
+    }
     schedule(() => {
-      let pA = 3 + Math.floor(Math.random() * 3);
-      let pB = 3 + Math.floor(Math.random() * 3);
-      if (pA === pB) pA += 1;
-      setPenA(pA);
-      setPenB(pB);
-      const win = pA > pB ? teamA : teamB;
-      setWinner(win);
-      setPhase("done");
-      schedule(() => onComplete(win), 1100);
-    }, 900);
+      const scoreA = result.kicksA.filter(Boolean).length;
+      const scoreB = result.kicksB.filter(Boolean).length;
+      finish(scoreA > scoreB ? teamA : teamB, 1100);
+    }, totalKicks * KICK_REVEAL_DELAY + 700);
+  };
+
+  const playExtraHalf = (half: "extra1" | "extra2", baseA: number, baseB: number) => {
+    setPhase(half);
+    schedule(() => {
+      const goalsA = randomExtraHalfGoals();
+      const goalsB = randomExtraHalfGoals();
+      const newA = baseA + goalsA;
+      const newB = baseB + goalsB;
+      setScoreA(newA);
+      setScoreB(newB);
+
+      if (newA !== newB) {
+        finish(newA > newB ? teamA : teamB, 900);
+      } else if (half === "extra1") {
+        schedule(() => playExtraHalf("extra2", newA, newB), 700);
+      } else {
+        schedule(startShootout, 700);
+      }
+    }, 1100);
   };
 
   const simulate = () => {
-    if (phase === "rolling") return;
+    if (phase !== "idle") return;
     setPhase("rolling");
     setWinner(null);
     setWentToExtra(false);
-    setPenA(null);
-    setPenB(null);
+    setShootout(null);
+    setRevealedKicks(0);
 
     let elapsed = 0;
     TICK_DELAYS.forEach((delay) => {
@@ -109,27 +144,35 @@ export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCard
       setScoreB(finalB);
 
       if (finalA !== finalB) {
-        const win = finalA > finalB ? teamA : teamB;
-        setWinner(win);
-        setPhase("done");
-        schedule(() => onComplete(win), 900);
+        finish(finalA > finalB ? teamA : teamB, 900);
       } else {
-        schedule(() => resolveExtraTime(finalA, finalB), 900);
+        setWentToExtra(true);
+        schedule(() => playExtraHalf("extra1", finalA, finalB), 900);
       }
     }, elapsed + 500);
   };
 
   const rolling = phase === "rolling";
-  const inExtraTime = phase === "extra";
-  const decidingPens = phase === "penalties";
+  const inExtra1 = phase === "extra1";
+  const inExtra2 = phase === "extra2";
+  const inShootout = phase === "shootout";
   const done = phase === "done";
-  const isLive = rolling || inExtraTime || decidingPens;
+  const isLive = rolling || inExtra1 || inExtra2 || inShootout;
+
+  const kicksTakenA = shootout ? Math.ceil(revealedKicks / 2) : 0;
+  const kicksTakenB = shootout ? Math.floor(revealedKicks / 2) : 0;
+  const shootoutScoreA = shootout ? shootout.kicksA.slice(0, kicksTakenA).filter(Boolean).length : 0;
+  const shootoutScoreB = shootout ? shootout.kicksB.slice(0, kicksTakenB).filter(Boolean).length : 0;
+  const shootoutComplete = shootout ? revealedKicks >= shootout.kicksA.length + shootout.kicksB.length : false;
+  const inSuddenDeath = shootout ? shootout.kicksA.length > 5 : false;
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-emerald-950/80 to-emerald-900/40 p-6 shadow-2xl backdrop-blur-sm transition-shadow duration-500 sm:p-8 ${
-        done ? "shadow-[0_0_35px_-5px_rgba(255,209,102,0.5)]" : ""
-      }`}
+      className={`relative overflow-hidden rounded-3xl border p-6 shadow-2xl backdrop-blur-sm transition-all duration-500 sm:p-8 ${
+        inShootout
+          ? "border-red-400/40 bg-gradient-to-b from-red-950/50 to-emerald-950/60"
+          : "border-white/10 bg-gradient-to-b from-emerald-950/80 to-emerald-900/40"
+      } ${done ? "shadow-[0_0_35px_-5px_rgba(255,209,102,0.5)]" : ""}`}
     >
       <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-beam-sweep" />
 
@@ -153,13 +196,15 @@ export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCard
             <span className={rolling ? "animate-score-flicker" : ""}>{scoreB ?? "-"}</span>
           </div>
 
-          {(wentToExtra || decidingPens || (done && penA !== null)) && (
+          {wentToExtra && !inShootout && (
             <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-amber-300/90">
-              {decidingPens && penA === null
-                ? "Penalties…"
-                : penA !== null
-                  ? `Pens ${penA}-${penB}`
-                  : "Extra time"}
+              {done && shootout
+                ? "After penalties"
+                : inExtra1
+                  ? "Extra time · 1st half"
+                  : inExtra2
+                    ? "Extra time · 2nd half"
+                    : "Extra time"}
             </p>
           )}
 
@@ -172,10 +217,25 @@ export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCard
             </button>
           )}
 
-          {isLive && (
+          {rolling && (
             <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-white/60 animate-pulse">
-              {inExtraTime ? "Extra time…" : decidingPens ? "Shootout…" : "Playing…"}
+              Playing…
             </p>
+          )}
+          {(inExtra1 || inExtra2) && (
+            <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-amber-200/80 animate-pulse">
+              {inExtra1 ? "1st half…" : "2nd half…"}
+            </p>
+          )}
+
+          {shootout && (
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-300/90 animate-pulse">
+                {shootoutComplete ? "Shootout" : inSuddenDeath ? "Sudden death!" : "Penalty shootout"}
+              </p>
+              <KickRow code={teamA} kicks={shootout.kicksA} taken={kicksTakenA} score={shootoutScoreA} />
+              <KickRow code={teamB} kicks={shootout.kicksB} taken={kicksTakenB} score={shootoutScoreB} />
+            </div>
           )}
 
           {done && winner && (
@@ -187,6 +247,44 @@ export default function MatchCard({ label, teamA, teamB, onComplete }: MatchCard
 
         <TeamSide code={teamB} align="right" isWinner={winner === teamB} faded={done && winner !== teamB} />
       </div>
+    </div>
+  );
+}
+
+function KickRow({
+  code,
+  kicks,
+  taken,
+  score,
+}: {
+  code: TeamCode;
+  kicks: boolean[];
+  taken: number;
+  score: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-8 font-heading text-[11px] uppercase text-white/60">{code}</span>
+      <div className="flex gap-1">
+        {kicks.map((scored, i) => {
+          const revealed = i < taken;
+          return (
+            <span
+              key={i}
+              className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] leading-none sm:h-6 sm:w-6 ${
+                revealed
+                  ? scored
+                    ? "border-emerald-300 bg-emerald-500/80 text-white animate-kick-pop"
+                    : "border-red-400 bg-red-900/70 text-red-200 animate-kick-pop"
+                  : "border-white/20 bg-white/5 text-transparent"
+              }`}
+            >
+              {revealed ? (scored ? "●" : "✕") : ""}
+            </span>
+          );
+        })}
+      </div>
+      <span className="w-4 font-score text-sm font-bold text-white">{score}</span>
     </div>
   );
 }
