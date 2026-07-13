@@ -36,6 +36,7 @@ export default function Home() {
   ].filter((r): r is { label: string; result: MatchResult } => r.result !== null);
 
   return (
+    <>
     <div className="pitch-bg relative flex flex-1 flex-col items-center overflow-hidden px-4 py-10 sm:py-16">
       <div className="floodlight pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-white/10 to-transparent" />
 
@@ -109,8 +110,9 @@ export default function Home() {
           </button>
         </div>
       </div>
+    </div>
 
-      {champion && championModalOpen && (
+    {champion && championModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={() => setChampionModalOpen(false)}
@@ -162,7 +164,7 @@ export default function Home() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
