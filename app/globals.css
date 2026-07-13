@@ -10,6 +10,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+  --font-score: var(--font-score);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +25,274 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* --- World Cup 2026 predictor animations --- */
+
+.pitch-bg {
+  background-color: #04140c;
+  background-image:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 209, 102, 0.12), transparent 55%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 60px,
+      transparent 60px,
+      transparent 120px
+    ),
+    linear-gradient(180deg, #0a3d24 0%, #062a19 55%, #041b11 100%);
+}
+
+.floodlight {
+  animation: floodlight-sweep 5s ease-in-out infinite;
+}
+
+.shimmer-title {
+  background: linear-gradient(90deg, #ffd166 0%, #ffffff 25%, #ffd166 50%, #ffffff 75%, #ffd166 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-text 4s linear infinite;
+}
+
+@keyframes floodlight-sweep {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes flag-flutter {
+  0%,
+  100% {
+    transform: perspective(120px) rotateY(0deg);
+  }
+  50% {
+    transform: perspective(120px) rotateY(8deg);
+  }
+}
+.animate-flag-flutter {
+  animation: flag-flutter 3.2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0px rgba(255, 209, 102, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.85));
+  }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes trophy-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-10px) scale(1.08);
+  }
+  55% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+.animate-trophy-bounce {
+  animation: trophy-bounce 1.1s ease-in-out 1;
+}
+
+@keyframes score-flicker {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+.animate-score-flicker {
+  animation: score-flicker 0.15s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(260px) rotate(600deg);
+    opacity: 0;
+  }
+}
+.animate-confetti-fall {
+  animation-name: confetti-fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes beam-sweep {
+  0% {
+    transform: translateX(-30%) rotate(8deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateX(130%) rotate(8deg);
+    opacity: 0;
+  }
+}
+.animate-beam-sweep {
+  animation: beam-sweep 4.5s ease-in-out infinite;
+}
+
+@keyframes score-impact {
+  0% {
+    transform: scale(1.6);
+    filter: brightness(2);
+  }
+  40% {
+    transform: scale(0.92);
+  }
+  65% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+.animate-score-impact {
+  animation: score-impact 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes winner-shake {
+  0%,
+  100% {
+    transform: translateX(0) scale(1);
+  }
+  20% {
+    transform: translateX(-3px) scale(1.03);
+  }
+  40% {
+    transform: translateX(3px) scale(1.03);
+  }
+  60% {
+    transform: translateX(-2px) scale(1.02);
+  }
+  80% {
+    transform: translateX(2px) scale(1.02);
+  }
+}
+.animate-winner-shake {
+  animation: winner-shake 0.5s ease-in-out 1;
+}
+
+@keyframes champion-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.15) rotate(3deg);
+  }
+  75% {
+    transform: scale(0.95) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+.animate-champion-pop {
+  animation: champion-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes flash-burst {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+.animate-flash-burst {
+  animation: flash-burst 0.8s ease-out both;
+}
+
+@keyframes ring-burst {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.4);
+    border-width: 6px;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+    border-width: 1px;
+  }
+}
+.animate-ring-burst {
+  animation: ring-burst 1.4s ease-out infinite;
+}
+
+@keyframes crest-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-25deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+.animate-crest-entrance {
+  animation: crest-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
