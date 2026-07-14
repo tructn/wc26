@@ -60,7 +60,7 @@ export const PLAYERS: Record<TeamCode, WeightedPlayer[]> = {
     { name: "Rogers", weight: 3 },
     { name: "Mainoo", weight: 2 },
     { name: "Rice", weight: 2 },
-    { name: "J. Henderson", weight: 2 },
+    // { name: "J. Henderson", weight: 2 },
     { name: "Anderson", weight: 2 },
     { name: "Stones", weight: 1 },
     { name: "Guéhi", weight: 1 },
