@@ -38,7 +38,14 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} ${orbitron.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <footer className="px-4 py-4 text-center text-[11px] leading-relaxed text-white/40">
+          ⚠️ Disclaimer: This prediction is for entertainment only. It is not an official
+          forecast, and no accuracy or outcome is guaranteed. We accept no responsibility or
+          liability for any decisions based on these predictions.
+        </footer>
+      </body>
     </html>
   );
 }
